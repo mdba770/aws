@@ -48,7 +48,7 @@ aws elbv2 register-targets --target-group-arn $redarn --targets Id=$iid2
 
 aws elbv2 create-listener  --load-balancer-arn  $lbarn --protocol HTTP --port 80 --default-actions Type=forward,TargetGroupArn=$lbgrouparn
 
-
+#test
 
 
 
