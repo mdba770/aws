@@ -8,7 +8,8 @@ aws s3 cp server_2.html s3://langosh/red/index.html && echo "Bucket Folder srv2 
 ## Create key Pair 
 aws ec2 create-key-pair --key-name aws --query 'KeyMaterial' --output text > aws.pem && chmod 400 aws.pem && echo "Keypair was created : Use ssh -i aws.pem to connect to server"
 #### Create Security Group
-aws ec2 create-security-group --group-name lb --description "lb"  && echo "Security group was created"
+aws ec2 create-security-group --group-name lb --description "lb"  && echo "Security group was created" && sleep 5
+lbsgid=$(aws ec2 describe-security-groups --group-names lb | grep GroupId | awk '{print $2}' | sed 's/^.\{1\}//' | sed 's/.\{2\}$//')
 #### Open Port 80 & 22
 aws ec2 authorize-security-group-ingress --group-name lb --protocol tcp --port 80 --cidr 0.0.0.0/0  && echo "Port  80  was opened"
 aws ec2 authorize-security-group-ingress --group-name lb --protocol tcp --port 22 --cidr 82.81.134.46/32 && echo "Ports 22  was  opened"
@@ -24,7 +25,7 @@ aws ec2 run-instances --tag-specifications 'ResourceType=instance,Tags=[{Key=Nam
 subnet1=$(aws ec2 describe-instances --filters 'Name=tag:Name,Values=srv01' | grep subnet-  | awk '{print $2}' |  sed 's/^.\{1\}//' | sed 's/.\{2\}$//' | uniq   )
 subnet2=$(aws ec2 describe-instances --filters 'Name=tag:Name,Values=srv02' | grep subnet-  | awk '{print $2}' |  sed 's/^.\{1\}//' | sed 's/.\{2\}$//' | uniq   )
 #Create Load Balancer
-aws elbv2 create-load-balancer --name lb   --subnets $subnet1 $subnet2
+aws elbv2 create-load-balancer --name lb   --subnets $subnet1 $subnet2 --security-groups $lbsgid
 lbarn=$(aws elbv2  describe-load-balancers  | grep LoadBalancerArn |  awk '{print $2}'|  sed 's/^.\{1\}//' | sed 's/.\{2\}$//') 
 #Get vpc-id
 vpcid=$(aws elbv2 describe-load-balancers   | grep vpc- | awk '{print $2}' |  sed 's/^.\{1\}//' | sed 's/.\{2\}$//')
@@ -47,5 +48,7 @@ aws elbv2 register-targets --target-group-arn $redarn --targets Id=$iid2
 aws elbv2 create-listener  --load-balancer-arn  $lbarn --protocol HTTP --port 80 --default-actions Type=forward,TargetGroupArn=$lbgrouparn
 #Define Listener arn 
 listenerarn=$(aws elbv2 describe-listeners --load-balancer-arn $lbarn | grep ListenerArn |  awk '{print $2}'|  sed 's/^.\{1\}//' | sed 's/.\{2\}$//')
-aws elbv2 create-rule --listener-arn $listenerarn --priority 10 --conditions Field=path-pattern,Values='/blue/*' --actions Type=forward,TargetGroupArn=$bluearn
-aws elbv2 create-rule --listener-arn $listenerarn --priority 10 --conditions Field=path-pattern,Values='/red/*' --actions Type=forward,TargetGroupArn=$redarn
+aws elbv2 create-rule --listener-arn $listenerarn --priority 10 --conditions Field=path-pattern,Values='/blue' --actions Type=forward,TargetGroupArn=$bluearn
+aws elbv2 create-rule --listener-arn $listenerarn --priority 15 --conditions Field=path-pattern,Values='/blue/*' --actions Type=forward,TargetGroupArn=$bluearn
+aws elbv2 create-rule --listener-arn $listenerarn --priority 20 --conditions Field=path-pattern,Values='/red' --actions Type=forward,TargetGroupArn=$redarn
+aws elbv2 create-rule --listener-arn $listenerarn --priority 25 --conditions Field=path-pattern,Values='/red/*' --actions Type=forward,TargetGroupArn=$redarn

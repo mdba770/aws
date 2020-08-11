@@ -20,6 +20,8 @@ rm -f  /usr/share/nginx/html/index.html
 
 aws s3 cp  s3://langosh/blue/index.html /usr/share/nginx/html/
 
+ln -s /usr/share/nginx/html /usr/share/nginx/html/blue
+
 ## Start & Enable Nginx 
 
 systemctl enable nginx 
