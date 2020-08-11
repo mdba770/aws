@@ -37,40 +37,15 @@ iid1=$(aws ec2 describe-instances --filters 'Name=tag:Name,Values=srv01' | grep 
 iid2=$(aws ec2 describe-instances --filters 'Name=tag:Name,Values=srv02' | grep  InstanceId | awk '{print $2}'|  sed 's/^.\{1\}//' | sed 's/.\{2\}$//')
 #Set targetarn
 lbgrouparn=$(aws elbv2  describe-target-groups | grep TargetGroupArn | grep lbgroup |  awk '{print $2}'|  sed 's/^.\{1\}//' | sed 's/.\{2\}$//')
-bluearn=$(aws elbv2  describe-target-groups | grep TargetGroupArn | grep red |  awk '{print $2}'|  sed 's/^.\{1\}//' | sed 's/.\{2\}$//')
+bluearn=$(aws elbv2  describe-target-groups | grep TargetGroupArn | grep blue |  awk '{print $2}'|  sed 's/^.\{1\}//' | sed 's/.\{2\}$//')
 redarn=$(aws elbv2  describe-target-groups  | grep TargetGroupArn | grep red |  awk '{print $2}'|  sed 's/^.\{1\}//' | sed 's/.\{2\}$//')
 #Register Targets 
 aws elbv2 register-targets --target-group-arn $lbgrouparn --targets Id=$iid1 Id=$iid2
 aws elbv2 register-targets --target-group-arn $bluearn --targets Id=$iid1 
 aws elbv2 register-targets --target-group-arn $redarn --targets Id=$iid2
-
 #Create Listener 
-
 aws elbv2 create-listener  --load-balancer-arn  $lbarn --protocol HTTP --port 80 --default-actions Type=forward,TargetGroupArn=$lbgrouparn
-
-#test
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#Define Listener arn 
+listenerarn=$(aws elbv2 describe-listeners --load-balancer-arn $lbarn | grep ListenerArn |  awk '{print $2}'|  sed 's/^.\{1\}//' | sed 's/.\{2\}$//')
+aws elbv2 create-rule --listener-arn $listenerarn --priority 10 --conditions Field=path-pattern,Values='/blue/*' --actions Type=forward,TargetGroupArn=$bluearn
+aws elbv2 create-rule --listener-arn $listenerarn --priority 10 --conditions Field=path-pattern,Values='/red/*' --actions Type=forward,TargetGroupArn=$redarn
